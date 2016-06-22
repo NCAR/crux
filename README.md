@@ -20,9 +20,21 @@ Execute XML Schema validation against a local XML file:
 
     crux.jar file.xml
 
-Execute XML Schema validation and Schematron validation gainst a local XML file:
+Execute XML Schema validation and Schematron validation against a local XML file:
 
-    crux.jar -s schematron.sch file.xml
+    crux.jar -s rules.sch file.xml
+
+Execute XML Schema validation against a set of local XML files based on the schema locations in each file:
+
+    crux.jar *.xml
+
+Execute XML Schema validation against a remote XML file:
+
+    crux.jar http://foo.org/myschema.xsd
+
+Execute XML Schema validation against a local XML file using local copies of schemas as defined in catalog.xml:
+
+    crux.jar file.xml -c catalog.xml
 
 Execute XML Schema validation against a local XSD file:
 
