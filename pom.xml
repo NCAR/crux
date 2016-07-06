@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=* -->
+<!-- (c) Copyright 2015 University Corporation for -->
+<!-- Atmospheric Research (UCAR).  All Rights Reserved. -->
+<!-- *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=* -->
+
+<!--
+    To build a runnable JAR with dependencies run:
+         mvn clean package assembly:single
+
+    If the package or assembly phase is left out artifacts may be missing from the final JAR.
+    The 'package' target builds ONLY this project's classes into a JAR file
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>edu.ucar.ral.xml</groupId>
+  <artifactId>crux</artifactId>
+  <packaging>jar</packaging>
+  <version>1.1</version>
+  <name>Command-line Refuter of Unshapely XML (CRUX)</name>
+  <description>
+    This library provides command-line support for validating XML files against XML schema 1.0 and Schematron definitions
+  </description>
+
+  <scm>
+  </scm>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <surefire.test.skip>false</surefire.test.skip>
+  </properties>
+
+  <repositories>
+
+    <repository>
+      <id>Maven 2 repo</id>
+      <name>Repo1</name>
+      <url>http://repo1.maven.org/maven2/</url>
+    </repository>
+
+  </repositories>
+
+  <dependencies>
+
+    <!-- For Schematron -->
+    <dependency>
+      <groupId>net.sf.saxon</groupId>
+      <artifactId>Saxon-HE</artifactId>
+      <version>9.7.0-6</version>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>xerces</groupId>
+      <artifactId>xmlParserAPIs</artifactId>
+      <version>2.6.2</version>
+    </dependency>
+
+    <dependency>
+      <groupId>xerces</groupId>
+      <artifactId>xercesImpl</artifactId>
+      <version>2.11.0</version>
+    </dependency>
+
+    <!-- Needed for catalog support with Xerces -->
+    <dependency>
+      <groupId>xml-resolver</groupId>
+      <artifactId>xml-resolver</artifactId>
+      <version>1.2</version>
+    </dependency>
+
+    <!-- Included for DirectoryScanner class -->
+    <dependency>
+      <groupId>org.apache.ant</groupId>
+      <artifactId>ant</artifactId>
+      <version>1.7.1</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+
+    <plugins>
+
+      <!-- Compiler plug-in -->
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+          <excludes>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <!-- Necessary or all dependencies have to be resolvable to a non-SNAPSHOT version -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <allowTimestampedSnapshots>false</allowTimestampedSnapshots>
+          <preparationGoals>clean install</preparationGoals>
+        </configuration>
+      </plugin>
+
+      <!-- Test plug-in -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.10</version>
+        <configuration>
+          <useFile>false</useFile>
+          <!-- <reportFormat>brief</reportFormat> -->
+          <reportFormat>plain</reportFormat>
+          <!--<skipTests>true</skipTests>-->
+          <skipTests>false</skipTests>
+        </configuration>
+      </plugin>
+
+       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>2.2</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+          <appendAssemblyId>false</appendAssemblyId>
+          <tarLongFileMode>gnu</tarLongFileMode>
+          <archive>
+            <manifest>
+              <mainClass>edu.ucar.ral.crux.Crux</mainClass>
+            </manifest>
+          </archive>
+          <!-- WARNING!! Change appendAssemblyId above to true if another descriptor is added
+          or all of the output JARs will have the same name and overwrite one another  -->
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+      </plugin>
+
+      <!-- Disable JAR file generation.  This is done instead through the assembly target -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+
+  </build>
+
+  <!-- Javadoc generation -->
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9</version>
+        <configuration>
+          <!--<skip>true</skip> -->
+          <verbose>true</verbose>
+          <debug>true</debug>
+          <linksource>false</linksource>
+          <docfilessubdirs>true</docfilessubdirs>
+          <doctitle>CRUX</doctitle>
+          <bottom>National Center for Atmospheric Research, 2014</bottom>
+          <!-- <overview>path</overview> -->
+          <!-- <excludePackageNames>pkg1:pkg2...</excludePackageNames> -->
+          <sourcepath>${basedir}/src/main/java;${basedir}/target/generated-sources/xjc</sourcepath>
+          <subpackages>edu</subpackages>
+          <tags>
+            <tag>
+              <name>todo</name>
+              <placement>a</placement>
+              <head>To Do:</head>
+            </tag>
+            <tag>
+              <name>note</name>
+              <placement>a</placement>
+              <head>Note:</head>
+            </tag>
+            <tag>
+              <name>example</name>
+              <placement>a</placement>
+              <head>Example:</head>
+            </tag>
+          </tags>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </reporting>
+
+</project>
+
+

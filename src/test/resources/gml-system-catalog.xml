@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">
+
+<!--
+A catalog of local schema locations for all of the GML schemas.  This catalog uses each schema location to map to local file locations
+-->
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <system systemId="http://www.w3.org/2001/xml.xsd" uri="schema/org/w3c/2001/xml.xsd"/>
+  <system systemId="http://schemas.opengis.net/gml/3.2.1/gml.xsd" uri="schema/net/opengis/gml/3.2.1/gml.xsd"/>
+  <system systemId="http://www.w3.org/1999/xlink.xsd" uri="schema/org/w3c/1999/xlink.xsd"/>
+  <system systemId="http://schemas.opengis.net/iso/19139/20070417/gmd/gmd.xsd" uri="schema/net/opengis/iso/19139/20070417/gmd/gmd.xsd"/>
+  <system systemId="http://schemas.opengis.net/iso/19139/20070417/gco/gco.xsd" uri="schema/net/opengis/iso/19139/20070417/gco/gco.xsd"/>
+  <system systemId="http://schemas.opengis.net/iso/19139/20070417/gss/gss.xsd" uri="schema/net/opengis/iso/19139/20070417/gss/gss.xsd"/>
+  <system systemId="http://schemas.opengis.net/iso/19139/20070417/gts/gts.xsd" uri="schema/net/opengis/iso/19139/20070417/gts/gts.xsd"/>
+  <system systemId="http://schemas.opengis.net/iso/19139/20070417/gsr/gsr.xsd" uri="schema/net/opengis/iso/19139/20070417/gsr/gsr.xsd"/>
+</catalog>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shiporder orderid="889923" xmlns="http://www.w3schools.com/schema/shiporder" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.w3schools.com/schema/shiporder ./shiporder.xsd">
+  <orderperson>Thor</orderperson>
+  <shipto>
+    <name>Loki</name>
+    <address>Ingersol 2</address>
+    <city>London</city>
+    <country>UK</country>
+  </shipto>
+  <item>
+    <title>A Book</title>
+    <note>Special Edition</note>
+    <quantity>1</quantity>
+    <price>43.32</price>
+  </item>
+</shiporder>

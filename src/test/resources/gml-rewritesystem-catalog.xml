@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">
+
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+
+   <!-- W3C -->
+  <rewriteSystem systemIdStartString="http://www.w3.org" rewritePrefix="schema/org/w3c/"/>
+
+   <!-- OGC and ISO schemas on schemas.opengis.net -->
+  <rewriteSystem systemIdStartString="http://schemas.opengis.net" rewritePrefix="schema/net/opengis"/>
+
+</catalog>

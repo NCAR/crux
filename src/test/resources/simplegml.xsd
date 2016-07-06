@@ -1,0 +1,19 @@
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:gml="http://www.opengis.net/gml/3.2"
+  elementFormDefault="qualified" attributeFormDefault="unqualified" targetNamespace="http://ral.ucar.edu/simplegml">
+
+  <import namespace="http://www.opengis.net/gml/3.2" schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd" />
+
+  <element name="WeatherStation">
+    <complexType>
+      <complexContent>
+        <extension base="gml:AbstractFeatureType">
+          <sequence>
+            <element name="location" type="gml:PointPropertyType"/>
+            <element name="updatedTime" type="gml:TimeInstantPropertyType" minOccurs="0" maxOccurs="1"/>
+          </sequence>
+        </extension>
+      </complexContent>
+    </complexType>
+  </element>
+
+</schema>
