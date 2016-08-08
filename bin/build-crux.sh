@@ -5,7 +5,7 @@
 
 if [ -e pom.xml ]; then
   echo "Building library..."
-  mvn clean package assembly:single
+  mvn clean package assembly:single -Dmaven.install.skip=true
   bin/make-executable-jar.sh target/crux-*.jar
 else
   echo "ERROR: must be run from the directory with pom.xml"
