@@ -1,3 +1,4 @@
 language: java
 sudo: false
+install: /bin/true
 script: bin/build-crux.sh
