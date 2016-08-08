@@ -3,6 +3,8 @@ Command-line Refuter of Unshapely XML (CRUX)
 Command line and library support for XML schema and Schematron validation for any
 platform with a Java runtime.
 
+[![Build Status](https://travis-ci.org/NCAR/crux.svg?branch=master)](https://travis-ci.org/NCAR/crux)
+
 Execution
 ---------
 The Crux JAR is also an executable file on MacOS and Unix/Linux systems (an executable ZIP),
