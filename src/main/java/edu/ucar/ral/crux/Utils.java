@@ -32,6 +32,19 @@ public class Utils {
   }
 
   /**
+   * Return a file path which is unique under a base directory.
+   * A base directory of /tmp/ and a file /home/username/rule/myschematron.sch would become /tmp/cruxcache/home/username/rule/myschematron.xsl
+   * @param baseDir
+   * @param file
+   * @return
+   * @throws IOException
+   */
+  public static String uniquePathUnder( File baseDir, File file ) throws IOException {
+    //Remove colons from the file path which would cause problems on Windows, such as in C:/Users/foo
+    return baseDir.getCanonicalPath() + File.separator + file.getParentFile().getCanonicalPath().replace( ":", "" );
+  }
+
+  /**
    * Export a resource embedded in a JAR file to a local file on disk.
    *
    * @param resourceName ie.: "/foo.txt"
@@ -40,10 +53,8 @@ public class Utils {
    */
   static public void writeResourceToFile( String resourceName, File outputFile ) throws IOException {
     InputStream inputStream = null;
-    OutputStream resStreamOut = null;
     try {
       inputStream = Utils.class.getResourceAsStream( resourceName );
-      resStreamOut = new FileOutputStream( outputFile );
       if(inputStream == null) {
         throw new IOException("Cannot get resource \"" + resourceName + "\" from Jar file.");
       }
@@ -51,8 +62,6 @@ public class Utils {
     } finally {
       if( inputStream != null )
         inputStream.close();
-      if( resStreamOut != null )
-        resStreamOut.close();
     }
   }
 
