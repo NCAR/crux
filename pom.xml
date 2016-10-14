@@ -17,7 +17,7 @@
   <groupId>edu.ucar.ral.xml</groupId>
   <artifactId>crux</artifactId>
   <packaging>jar</packaging>
-  <version>1.1</version>
+  <version>1.2</version>
   <name>Command-line Refuter of Unshapely XML (CRUX)</name>
   <description>
     This library provides command-line support for validating XML files against XML schema 1.0 and Schematron definitions
@@ -100,8 +100,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
           <excludes>
           </excludes>
         </configuration>
@@ -156,18 +156,6 @@
             <descriptorRef>jar-with-dependencies</descriptorRef>
           </descriptorRefs>
         </configuration>
-      </plugin>
-
-      <!-- Disable JAR file generation.  This is done instead through the assembly target -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <phase>none</phase>
-          </execution>
-        </executions>
       </plugin>
 
     </plugins>
