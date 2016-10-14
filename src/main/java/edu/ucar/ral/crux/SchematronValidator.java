@@ -4,14 +4,17 @@
 
 package edu.ucar.ral.crux;
 
-import net.sf.saxon.Configuration;
+import net.sf.saxon.s9api.MessageListener;
 import net.sf.saxon.s9api.Processor;
+import net.sf.saxon.s9api.SaxonApiException;
+import net.sf.saxon.s9api.Serializer;
+import net.sf.saxon.s9api.XdmNode;
+import net.sf.saxon.s9api.XsltCompiler;
+import net.sf.saxon.s9api.XsltExecutable;
+import net.sf.saxon.s9api.XsltTransformer;
 
-import javax.xml.transform.Templates;
-import javax.xml.transform.Transformer;
+import javax.xml.transform.SourceLocator;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -34,17 +37,21 @@ public class SchematronValidator {
 
   private File cacheDir = new File( System.getProperty("java.io.tmpdir"), "cruxcache" );
 
-  //Thread safety guarded by "this"
-  private HashMap<String,Templates> templateCache = new HashMap<String, Templates>();
+  private int debugLevel = 0;
 
-  //Thread safety guarded by its own reference (errorListener.this)
-  private final ErrorListener errorListener = new ErrorListener();
+  private ThreadLocal<HashMap<String,XsltExecutable>> templateCacheLocal = new ThreadLocal<>();
+  private ThreadLocal<Processor> processorLocal = new ThreadLocal<>();
 
   public SchematronValidator(){
     System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
   }
 
+  public SchematronValidator(int debugLevel){
+    this.debugLevel = debugLevel;
+  }
+
   public void validate( String xmlFile, String schematronFile ) throws ValidationException, IOException {
+    long t1 = System.currentTimeMillis();
     File xmlFileObj = new File( xmlFile );
     if( !xmlFileObj.exists() ){
       throw new IOException( String.format( "File %s does not exist", xmlFile ) );
@@ -54,65 +61,100 @@ public class SchematronValidator {
     }
     cacheDir.mkdirs();
     ensureISOSchematronXSLFilesOnDisk( cacheDir );
+    if( debugLevel > 0 ) {
+      System.out.println( "Ensuring ISO Schematron files on disk took " + ( System.currentTimeMillis() - t1 ) + " ms" );
+    }
 
-    //compile the passed-in Schematron rules into XSL using the ISO Schematron XSL, if necessary
     try {
+      t1 = System.currentTimeMillis();
+      //compile the passed-in Schematron rules into XSL using the ISO Schematron XSL, if necessary
       File xslFile = compileSchematronRulesToXSLIfNeeded( schematronFile );
+      if( debugLevel > 0 ) {
+        System.out.printf( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms\n" );
+      }
 
+      t1 = System.currentTimeMillis();
       //run the compiled XSL rules against the XML file
       String transformResult = transform( xslFile, new File( xmlFile ) );
-      int k = 0;
+      if( debugLevel > 0 ) {
+        System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
+      }
     }
-    catch( TransformerException e ){
-      int j = 0;
+    catch( SaxonApiException e ){
+      throw new IOException( e );
     }
   }
 
-  private File compileSchematronRulesToXSLIfNeeded( String schematronFile ) throws TransformerException, ValidationException {
-    String filename = new File( schematronFile ).getName();
+  private File compileSchematronRulesToXSLIfNeeded( String schematronFile ) throws ValidationException, IOException, SaxonApiException {
+    File schematronFileObj = new File( schematronFile );
+    String filename = schematronFileObj.getName();
     String[] split = filename.split( "\\." );
     String origExt = split[split.length-1];
-    File outputFile = new File( cacheDir, filename.replace( "."+origExt, ".xsl" ) );
+    //convert the absolute path of the original file to its full path under the cache directory.  This ensures that if
+    //there are two differing files on disk named 'xyz.sch' that they each have their own unique compiled xsl path
+    String outputDirStr = Utils.uniquePathUnder( cacheDir, schematronFileObj );
+    File outputFile = new File( outputDirStr, filename.replace( "."+origExt, ".xsl" ) );
     if( !outputFile.exists() ) {
+      outputFile.getParentFile().mkdirs();
       //if compilation fails there is no graceful way to recover.  We are done
-      transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), new File( schematronFile ), outputFile );
+      transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), schematronFileObj, outputFile );
     }
     return outputFile;
   }
 
-  private String transform( File xslFile, File xmlFile ) throws TransformerException, ValidationException, IOException {
-    long t1 = System.currentTimeMillis();
-    Templates templates = getTemplates( xslFile );
-    Transformer transformer = templates.newTransformer();
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    ErrorListener listener = new ErrorListener();
-    transformer.setErrorListener( listener );
-    transformer.transform( new StreamSource( xmlFile ), new StreamResult( out ) );
-    System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
-    out.close();
-    String result = new String( out.toByteArray(), StandardCharsets.UTF_8 );
-    if( listener.errors.size() > 0 || result.length() > 0 ){
-      throw new ValidationException( listener.errors );
+  /**
+   * Transform an XML file using the supplied XSL file and return the output as a String
+   * @throws ValidationException
+   * @throws SaxonApiException
+   */
+  private String transform( File xslFile, File xmlFile ) throws ValidationException, SaxonApiException {
+    ErrorListener errorListener = new ErrorListener( xmlFile.toString() );
+    XsltExecutable templates = getTemplates( xslFile, errorListener );
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    XsltTransformer t = templates.load();
+    XdmNode source = getProcessor().newDocumentBuilder().build(new StreamSource(xmlFile));
+    t.setInitialContextNode(source);
+    t.setErrorListener( errorListener );
+    t.setMessageListener( errorListener );
+    Serializer out = getProcessor().newSerializer();
+    out.setOutputStream( baos );
+    t.setDestination( out );
+    t.transform();
+    if( errorListener.errors.size() > 0 ){
+      throw new ValidationException( VALIDATION_FAILED_PREFIX, errorListener.errors );
     }
-    return result;
+    return new String( baos.toByteArray(), StandardCharsets.UTF_8 );
   }
 
-  private void transform( File xslFile, File xmlFile, File outputFile ) throws TransformerException, ValidationException {
+  /**
+   * Transform an XML file using the supplied XSL file, and write the output to an output file
+   * @throws ValidationException
+   * @throws SaxonApiException
+   */
+  private void transform( File xslFile, File xmlFile, File outputFile ) throws ValidationException, SaxonApiException {
     long t1 = System.currentTimeMillis();
-    Templates templates = getTemplates( xslFile );
-    Transformer transformer = templates.newTransformer();
-    ErrorListener listener = new ErrorListener();
-    transformer.setErrorListener( listener );
-    transformer.transform( new StreamSource( xmlFile ), new StreamResult( outputFile ) );
-    System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
-    if( listener.errors.size() > 0 ){
-      throw new ValidationException( listener.errors );
+    ErrorListener errorListener = new ErrorListener( xmlFile.toString() );
+    XsltExecutable templates = getTemplates( xslFile, errorListener );
+    XsltTransformer t = templates.load();
+    XdmNode source = getProcessor().newDocumentBuilder().build(new StreamSource(xmlFile));
+    t.setInitialContextNode(source);
+    t.setErrorListener( errorListener );
+    t.setMessageListener( errorListener );
+    Serializer out = getProcessor().newSerializer();
+    out.setOutputFile( outputFile );
+    t.setDestination( out );
+    t.transform();
+    if( debugLevel > 0 ) {
+      System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
+    }
+    if( errorListener.errors.size() > 0 ){
+      throw new ValidationException( VALIDATION_FAILED_PREFIX, errorListener.errors );
     }
   }
 
   /**
    * Saxon can only use XSL files on disk the way we are calling it.  Ensure that all of the required XSL files for
-   * Schematron checking are available on disk, and if not that they are extracted from the JAR/classpath
+   * ISO Schematron checking are available on disk, and if not that they are extracted from the JAR/classpath
    */
   public static void ensureISOSchematronXSLFilesOnDisk( File outputDir ){
     String resourcePrefix = "iso-schematron-xslt2";
@@ -130,21 +172,43 @@ public class SchematronValidator {
   }
 
   /**
-   * Maintain prepared stylesheets in memory for reuse
+   * Maintain prepared stylesheets in memory for reuse.  A ThreadLocal instance is maintained, as XsltExecutables are
+   * not thread-safe
    */
-  private synchronized Templates getTemplates(File xslFile) throws TransformerException {
-    Templates templates = templateCache.get(xslFile.toString());
-    if( templates==null ) {
-      TransformerFactory factory = TransformerFactory.newInstance();
-      templates = factory.newTemplates( new StreamSource( xslFile ) );
+  private XsltExecutable getTemplates(File xslFile, ErrorListener errorListener ) throws SaxonApiException {
+    HashMap<String, XsltExecutable> templateCache = templateCacheLocal.get();
+    if( templateCacheLocal.get() == null ){
+      templateCache = new HashMap<>();
+      templateCacheLocal.set( templateCache );
+    }
+    XsltExecutable templates = templateCache.get(xslFile.toString());
+    if( templates == null ) {
+      Processor proc = getProcessor();
+      XsltCompiler comp = proc.newXsltCompiler();
+      comp.setErrorListener( errorListener );
+      templates = comp.compile( new StreamSource( xslFile ) );
       templateCache.put( xslFile.toString(), templates );
     }
     return templates;
   }
 
-  private class ErrorListener implements javax.xml.transform.ErrorListener{
-    private List<ValidationError> errors = new ArrayList<ValidationError>();
-    private List<String> warnings = new ArrayList<String>();
+  private Processor getProcessor(){
+    Processor proc = processorLocal.get();
+    if( proc == null ) {
+      proc = new Processor( false );
+      processorLocal.set( proc );
+    }
+    return proc;
+  }
+
+  private class ErrorListener implements javax.xml.transform.ErrorListener, MessageListener{
+    private List<ValidationError> errors = new ArrayList<>();
+    private List<String> warnings = new ArrayList<>();
+    private String filename;
+
+    private ErrorListener( String filename ){
+      this.filename = filename;
+    }
 
     @Override
     public void warning( TransformerException exception ) throws TransformerException {
@@ -153,104 +217,30 @@ public class SchematronValidator {
 
     @Override
     public void error( TransformerException exception ) throws TransformerException {
-      errors.add( new ValidationError(
-        exception.getMessage(),
-        exception.getLocator().getSystemId(),
-        exception.getLocator().getLineNumber(),
-        exception.getLocator().getColumnNumber() ) );
+      errors.add( translateException( exception ) );
     }
 
     @Override
     public void fatalError( TransformerException exception ) throws TransformerException {
-      errors.add( new ValidationError(
-        exception.getMessage(),
-        exception.getLocator().getSystemId(),
-        exception.getLocator().getLineNumber(),
-        exception.getLocator().getColumnNumber() ) );
+      errors.add( translateException( exception ) );
+    }
+
+    private ValidationError translateException( TransformerException e ){
+      SourceLocator locator = e.getLocator();
+      if( locator != null ){
+        return new ValidationError( e.getMessage(), filename, locator.getLineNumber(), locator.getColumnNumber() );
+      }
+      return new ValidationError( e.getMessage(), filename, null, null );
+    }
+
+    @Override
+    public void message( XdmNode xdmNode, boolean b, SourceLocator sourceLocator ) {
+      if( sourceLocator != null ){
+        errors.add( new ValidationError( xdmNode.toString(), filename, sourceLocator.getLineNumber(), sourceLocator.getColumnNumber() ) );
+      }
+      else{
+        errors.add( new ValidationError( xdmNode.toString(), filename, null, null ) );
+      }
     }
   }
-
-  public static void main( String[] args ) throws Exception {
-    Processor processor = new Processor( true );
-    Configuration config = processor.getUnderlyingConfiguration();
-    config.setVersionWarning( true );
-  }
-
-  /**
-   * Validate the given file with Schematron rules
-   * @param xmlFile the file to be validated
-   * @param schematronFile the file which contains Schematron rules
-   * @throws IOException
-   *
-  public void validateOLD( String xmlFile, String schematronFile ) throws ValidationException, IOException {
-  File xmlFileObj = new File( xmlFile );
-  if( !xmlFileObj.exists() ){
-  throw new IOException( String.format( "File %s does not exist", xmlFile ) );
-  }
-  if( !new File( schematronFile ).exists() ){
-  throw new IOException( String.format( "File %s does not exist", schematronFile) );
-  }
-  cacheDir.mkdirs();
-
-  File intermediateXslFile = new File( "schematronTemp", ".xsl" );
-  //    ensureISOSchematronXSLFilesOnDisk( cacheDir );
-  File isoSchematronXSL = new File( cacheDir, "iso_schematron_message_xslt2.xsl" );
-
-  //Compile Schematron schema into XSLT
-  //java -jar saxon9.5-he.jar $schFile iso-schematron-xslt2/iso_schematron_message_xslt2.xsl -o:outputFile -quit:off
-  //    System.out.println( "\tCompiling Schematron into XSLT (" + xslFile.getPath() + ")" );
-  if( !intermediateXslFile.exists() ) {
-  long t1 = System.currentTimeMillis();
-  try {
-  Templates templates = getTemplates( "/iso-schematron-xslt2/iso_schematron_message_xslt2.xsl" );
-  Transformer transformer = templates.newTransformer();
-  transformer.transform( new StreamSource( schematronFile ), new StreamResult( intermediateXslFile ) );
-  //        Transform.main( new String[]{ schematronFile, isoSchematronXSL.getPath(), "-o:" + intermediateXslFile.getPath(), "-quit:off" } );
-  }
-  catch( Exception e ) {
-  throw new IOException( e );
-  }
-  System.out.println( "Compiling Schematron into XSLT took " + ( System.currentTimeMillis() - t1 ) + " ms" );
-  }
-
-
-
-  //java -jar saxon9.5-he.jar $xmlFile schema-compiled.xsl
-  //replace sys.out and sys.err temporarily so we can check the output of Saxon
-  PrintStream originalSysOut = System.out;
-  PrintStream originalSysErr = System.err;
-  ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-  PrintStream replacementSysOut = new PrintStream( outStream );
-  ByteArrayOutputStream errStream = new ByteArrayOutputStream();
-  PrintStream replacementSysErr = new PrintStream( errStream );
-  try{
-  System.setOut( replacementSysOut );
-  System.setErr( replacementSysErr );
-  Transform.main( new String[]{ xmlFile, intermediateXslFile.getPath() } );
-  }
-  catch(Exception e ){
-  throw new IOException( e );
-  }
-  finally{
-  System.setOut( originalSysOut );
-  System.setErr( originalSysErr );
-  }
-  String sysout = new String( outStream.toByteArray() );
-  String syserr = new String( errStream.toByteArray() );
-  if( syserr.length() > 0 ){
-  //each line is a parsing error
-  String[] lines = syserr.split( "\\n" );
-  List<ValidationError> failures = new ArrayList<ValidationError>( lines.length );
-  for( String line : lines ){
-  failures.add( new ValidationError( line, xmlFile, null, null ) );
-  }
-  throw new ValidationException( failures );
-  }
-
-  List<ValidationError> failures = new ArrayList<ValidationError>();
-  if( failures.size() > 0 ){
-  throw new ValidationException( VALIDATION_FAILED_PREFIX, failures );
-  }
-  }
-   */
 }
