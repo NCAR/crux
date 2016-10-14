@@ -17,17 +17,22 @@ public class SchematronTest {
     SchematronValidator validator = new SchematronValidator();
     String xmlFile = "src/test/resources/shiporder-pass1.xml";
     String schematronFile = "src/test/resources/shiporder.sch";
+    long t1 = System.currentTimeMillis();
     validator.validate( xmlFile, schematronFile );
+    System.out.println( "Schematron validation took " + ( System.currentTimeMillis() - t1 ) + " ms" );
   }
 
   @Test
   public void testSchematronFail() throws Exception{
+    long t1 = System.currentTimeMillis();
     SchematronValidator validator = new SchematronValidator();
     String xmlFile = "src/test/resources/shiporder-fail-schematron.xml";
     String schematronFile = "src/test/resources/shiporder.sch";
     try {
       validator.validate( xmlFile, schematronFile );
-    }catch( ValidationException e){
+    }
+    catch( ValidationException e){
+      System.out.println( "Schematron validation took "+(System.currentTimeMillis() - t1)+ " ms");
       Assert.assertEquals( "Incorrect # of validation failures", 3, e.getValidationErrors().size() );
       Assert.assertEquals( "Incorrect schematron failure message 1", "Ship to name and address must both be present ((if(shiporder:name) then( shiporder:address ) else true()))", e.getValidationErrors().get( 0 ).getError() );
       Assert.assertTrue( "Incorrect schematron failure message 2", e.getValidationErrors().get( 1 ).getError().contains("Item price cannot exceed 10" ) );
