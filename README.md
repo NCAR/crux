@@ -54,5 +54,5 @@ Execute XML Schema validation against a local XSD file:
 
 Build
 -----
-Crux requires Java 7+ and Maven 3 to build.  The bin/build-crux.sh script can be used to
+Crux requires Java 8+ and Maven 3 to build.  The bin/build-crux.sh script can be used to
 build a fully executable JAR.
