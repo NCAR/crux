@@ -58,7 +58,6 @@ public class Crux {
           DirectoryScanner scanner = new DirectoryScanner();
           //Windows is case-insensitive.  For consistent behavior on this platform disable case sensitivity
           if( Utils.isWindows() ){
-            System.out.println( "Running on Windows, disabling file path case sensitivity" );
             scanner.setCaseSensitive( false );
           }
           if( ! localFile.isAbsolute() ) {
