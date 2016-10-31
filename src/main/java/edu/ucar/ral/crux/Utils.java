@@ -87,4 +87,12 @@ public class Utils {
       resStreamOut.close();
     }
   }
+
+  /**
+   * Determine if the Java runtime is running on a Windows platform
+   * @return
+   */
+  public static boolean isWindows(){
+    return System.getProperty( "os.name" ).startsWith( "Windows" );
+  }
 }

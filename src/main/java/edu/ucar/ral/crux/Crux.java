@@ -56,6 +56,11 @@ public class Crux {
           filePath=filePath.replace( "//", "/" );
           File localFile = new File( filePath );
           DirectoryScanner scanner = new DirectoryScanner();
+          //Windows is case-insensitive.  For consistent behavior on this platform disable case sensitivity
+          if( Utils.isWindows() ){
+            System.out.println( "Running on Windows, disabling file path case sensitivity" );
+            scanner.setCaseSensitive( false );
+          }
           if( ! localFile.isAbsolute() ) {
             scanner.setBasedir( "." );
           }
