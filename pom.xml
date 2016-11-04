@@ -5,8 +5,15 @@
 <!-- *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=* -->
 
 <!--
-    To build a runnable JAR with dependencies run:
+    To build a JAR with dependencies run:
          mvn clean package assembly:single
+
+    To deploy to Maven Central, run:
+         mvn clean deploy
+
+    Once this release has been verified in the staging area (https://oss.sonatype.org/service/local/staging/deploy/maven2)
+    it can be released to Maven Central using:
+         mvn nexus-staging:release
 
     If the package or assembly phase is left out artifacts may be missing from the final JAR.
     The 'package' target builds ONLY this project's classes into a JAR file
@@ -18,12 +25,33 @@
   <artifactId>crux</artifactId>
   <packaging>jar</packaging>
   <version>1.2</version>
+
   <name>Command-line Refuter of Unshapely XML (CRUX)</name>
   <description>
-    This library provides command-line support for validating XML files against XML schema 1.0 and Schematron definitions
+    This library provides command-line and library support for validating XML files against XML schema 1.0 and Schematron definitions
   </description>
+  <url>https://github.com/NCAR/crux</url>
+
+  <licenses>
+    <license>
+      <name>BSD-3 license</name>
+      <url>https://github.com/NCAR/crux/blob/master/LICENSE</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Aaron Braeckel</name>
+      <email>braeckel@ucar.edu</email>
+      <organization>National Center for Atmospheric Research (NCAR), Research Applications Laboratory (RAL)</organization>
+      <organizationUrl>http://www.ral.ucar.edu</organizationUrl>
+    </developer>
+  </developers>
 
   <scm>
+    <connection>scm:git:https://github.com/NCAR/crux.git</connection>
+    <developerConnection>scm:git:https://github.com/NCAR/crux.git</developerConnection>
+    <url>https://github.com/NCAR/crux/tree/master</url>
   </scm>
 
   <properties>
@@ -158,6 +186,65 @@
         </configuration>
       </plugin>
 
+      <!-- Generate source JAR file - for deployment to Maven Central -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Generate JavaDoc JAR file - for deployment to Maven Central -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9.1</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Sign the components for deployment to Maven Central -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.6</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- For deployment to Maven Central.  This plugin method is suggested in http://central.sonatype.org/pages/apache-maven.html -->
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.7</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh-release-staging</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+
     </plugins>
 
   </build>
@@ -203,6 +290,17 @@
 
     </plugins>
   </reporting>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh-release-staging</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+    </repository>
+  </distributionManagement>
 
 </project>
 
