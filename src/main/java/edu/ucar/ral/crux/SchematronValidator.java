@@ -155,6 +155,7 @@ public class SchematronValidator {
   /**
    * Saxon can only use XSL files on disk the way we are calling it.  Ensure that all of the required XSL files for
    * ISO Schematron checking are available on disk, and if not that they are extracted from the JAR/classpath
+   * @param outputDir the directory where Schematron XSL files should be stored
    */
   public static void ensureISOSchematronXSLFilesOnDisk( File outputDir ){
     String resourcePrefix = "iso-schematron-xslt2";

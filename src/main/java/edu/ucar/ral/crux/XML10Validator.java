@@ -37,9 +37,10 @@ public class XML10Validator {
   /**
    * Validate the given file (either an XSD or XML file), using the provided resolver
    * @param xsdOrXmlFile the XML or XSD file to be validated
-   * @throws IOException
-   * @throws SAXException
-   * @throws ParserConfigurationException
+   * @throws IOException if problems are encountered reading the file
+   * @throws SAXException when SAX parsing problems are encountered
+   * @throws ParserConfigurationException when SAX initialization fails
+   * @throws ValidationException when validation failures occur
    */
   public void validate( String xsdOrXmlFile ) throws ParserConfigurationException, SAXException, ValidationException, IOException {
     SAXParserFactory factory = SAXParserFactory.newInstance();

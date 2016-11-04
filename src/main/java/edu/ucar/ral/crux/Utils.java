@@ -33,11 +33,12 @@ public class Utils {
 
   /**
    * Return a file path which is unique under a base directory.
-   * A base directory of /tmp/ and a file /home/username/rule/myschematron.sch would become /tmp/cruxcache/home/username/rule/myschematron.xsl
-   * @param baseDir
-   * @param file
-   * @return
-   * @throws IOException
+   * A base directory of /tmp/ and a file /home/username/rule/myschematron.sch would become
+   * /tmp/home/username/rule/myschematron.xsl
+   * @param baseDir the base directory under which the file is placed
+   * @param file the file which should be placed under the base directory
+   * @return a unique path under the base directory for the file
+   * @throws java.io.IOException when a canonical path query encounters issues
    */
   public static String uniquePathUnder( File baseDir, File file ) throws IOException {
     //Remove colons from the file path which would cause problems on Windows, such as in C:/Users/foo
@@ -69,6 +70,7 @@ public class Utils {
    * Write an InputStream to an output file.  This method will close the InputStream when writing is finished
    * @param inputStream the input stream
    * @param outputFile the output file location the input stream will be written to
+   * @throws IOException when I/O errors are encountered
    */
   public static void writeToFile( InputStream inputStream, File outputFile ) throws IOException{
     if(inputStream == null) {
@@ -90,7 +92,7 @@ public class Utils {
 
   /**
    * Determine if the Java runtime is running on a Windows platform
-   * @return
+   * @return whether the current platform is Windows
    */
   public static boolean isWindows(){
     return System.getProperty( "os.name" ).startsWith( "Windows" );
