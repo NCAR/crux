@@ -55,7 +55,7 @@ Execute XML Schema validation against a local XSD file:
 Related Projects
 -----
 ### WMO/ICAO Web Validator
-Web/HTTP-based validator for WMO and ICAO XML schemas/models which runs in Java servlet containers.  Utilizes Crux for
+The [WMO/ICAO web validator](https://github.com/NCAR/wmo-icao-web-validator) is a web/HTTP-based validator for WMO and ICAO XML schemas/models which runs in Java servlet containers.  Utilizes Crux for
 XML Schema 1.0 and Schematron validation of XML messages. This is an HTTP-based Java toolkit with two components:
 
 * a web user interface for validating messages
@@ -64,7 +64,7 @@ POST body and returns validation results in JSON. This can be used to provide a 
 service using Crux - the JVM is only started once and reused elements are cached
 
 ### IBLSoft IWXXM Validation Web Service
-IWXXM Validation Web Service is a JSON-RPC 2.0 web service which allows to validate IWXXM data against XSD schemas and
+The [IWXXM Validation Web Service](https://github.com/iblsoft/iwxxm-validator) is a JSON-RPC 2.0 web service which allows to validate IWXXM data against XSD schemas and
 Schematron rules stored in the local filesystem with XML catalogue.
 
 Build
