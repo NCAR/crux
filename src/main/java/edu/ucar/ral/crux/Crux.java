@@ -4,7 +4,10 @@
 
 package edu.ucar.ral.crux;
 
+import ch.qos.logback.classic.Level;
 import org.apache.tools.ant.DirectoryScanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -20,6 +23,8 @@ import java.util.List;
  * Schematron definitions. This class can be used from the command-line or directly via methods
  */
 public class Crux {
+  private static final Logger LOG = LoggerFactory.getLogger( Crux.class ); 
+  
   private SchematronValidator schematronValidator = new SchematronValidator();
 
   /**
@@ -34,8 +39,8 @@ public class Crux {
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  public int validate( String catalogFile, String schematronFile, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
-    return validate( catalogFile, schematronFile, 0, xmlOrXsdPaths );
+  public int validate( String catalogFile, String schematronFile, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
+    return validate( catalogFile, schematronFile, 0, allowRemoteResources, xmlOrXsdPaths );
   }
 
   /**
@@ -51,12 +56,16 @@ public class Crux {
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  public int validate( String catalogFile, String schematronFile, int debugLevel, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
+  public int validate( String catalogFile, String schematronFile, int debugLevel, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     XML10Validator validator;
     if( catalogFile == null ) {
-      validator = new XML10Validator();
+      validator = new XML10Validator( allowRemoteResources );
     } else {
-      validator = new XML10Validator( debugLevel, catalogFile );
+      validator = new XML10Validator( allowRemoteResources, catalogFile );
+    }
+
+    if( !allowRemoteResources ) {
+      LOG.info( "Offline mode enabled, schema resolution will only use local files" );
     }
 
     List<ValidationError> errors = new ArrayList<>();
@@ -102,11 +111,11 @@ public class Crux {
             printValidatingXMLSchema( file, catalogFile );
             validator.validate( file );
             if( schematronFile != null ) {
-              System.out.printf( "Validating file %s against Schematron rules (%s)\n", file, schematronFile );
+              LOG.info( String.format( "Validating file %s against Schematron rules (%s)", file, schematronFile ) );
               schematronValidator.validate( file, schematronFile );
             }
 
-            System.out.println( "Validation successful, took " + ( System.currentTimeMillis() - startMs ) + " ms" );
+            LOG.info( "Validation successful, took " + ( System.currentTimeMillis() - startMs ) + " ms" );
           }
         }
         //otherwise this is a URL and nothing further needed
@@ -117,11 +126,11 @@ public class Crux {
           printValidatingXMLSchema( filePath, catalogFile );
           validator.validate( filePath );
           if( schematronFile != null ) {
-            System.out.printf( "Validating file %s against Schematron rules (%s)\n", filePath, schematronFile );
+            LOG.info( String.format( "Validating file %s against Schematron rules (%s)\n", filePath, schematronFile ) );
             schematronValidator.validate( filePath, schematronFile );
           }
 
-          System.out.println( "Validation successful, took " + ( System.currentTimeMillis() - startMs ) + " ms" );
+          LOG.info( "Validation successful, took " + ( System.currentTimeMillis() - startMs ) + " ms" );
         }
       }catch( ValidationException ve ){
         //just accumulate validation errors and throw a single Exception
@@ -144,7 +153,7 @@ public class Crux {
     if( catalogFile != null ){
       msg += " using the following catalog(s): "+ catalogFile;
     }
-    System.out.println( msg );
+    LOG.info( msg );
   }
 
   public static void main(String[] args){
@@ -159,6 +168,7 @@ public class Crux {
       System.err.println( "Options:" );
       System.err.println( "\t -c CATALOG_FILE" );
       System.err.println( "\t -s SCHEMATRON_FILE" );
+      System.err.println( "\t -o (offline use, remote schemas will not resolve)" );
       System.err.println( "\t -d  (enable debugging)\n" );
       System.err.println( "A simple catalog file which would utilize a local copy of http://www.w3.org/1999/xlink.xsd would be:\n\n"+simpleCatalog);
       System.err.println();
@@ -178,6 +188,7 @@ public class Crux {
     String catalogLocation = null;
     String schematronFile = null;
     int debugLevel = 0;
+    boolean allowRemoteResources = true;
     for( int i = 0; i < argsList.size(); i++ ){
       String arg = argsList.get( i );
       if( arg.equals( "-c" ) ){
@@ -208,6 +219,14 @@ public class Crux {
       }
       else if( arg.equals( "-d" ) ){
         debugLevel = 1;
+        ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)
+          LoggerFactory.getLogger("edu.ucar.ral.crux");
+        rootLogger.setLevel( Level.DEBUG );
+        argsList.remove( i );
+        i--;
+      }
+      else if( arg.equals( "-o" ) ){
+        allowRemoteResources = false;
         argsList.remove( i );
         i--;
       }
@@ -217,7 +236,7 @@ public class Crux {
     boolean validationFailed = false;
     try{
       int numValidatedFiles = 
-        crux.validate( catalogLocation, schematronFile, debugLevel, argsList.toArray( new String[argsList.size()] ) );
+        crux.validate( catalogLocation, schematronFile, debugLevel, allowRemoteResources, argsList.toArray( new String[argsList.size()] ) );
     }
     catch( ValidationException e ) {
       validationFailed = true;
@@ -227,13 +246,13 @@ public class Crux {
       }
       else {
         for( ValidationError failure : e.getValidationErrors() ) {
-          System.out.println( "Validation FAILED on " + failure );
+          LOG.info( "Validation FAILED on " + failure );
         }
       }
     }
     catch( FileNotFoundException e ){
       //print out a more readable message rather than the full stack trace
-      System.out.println( e.getMessage() );
+      LOG.info( e.getMessage() );
       System.exit( 1 );
     }
     catch( Exception e ){

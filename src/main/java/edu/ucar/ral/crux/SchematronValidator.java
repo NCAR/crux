@@ -12,6 +12,8 @@ import net.sf.saxon.s9api.XdmNode;
 import net.sf.saxon.s9api.XsltCompiler;
 import net.sf.saxon.s9api.XsltExecutable;
 import net.sf.saxon.s9api.XsltTransformer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.transform.SourceLocator;
 import javax.xml.transform.TransformerException;
@@ -29,6 +31,7 @@ import java.util.List;
  * Saxon.
  */
 public class SchematronValidator {
+  private static final Logger LOG = LoggerFactory.getLogger( SchematronValidator.class );
   private static final String VALIDATION_FAILED_PREFIX = "Schematron validation failed ";
 
   private File cacheDir = new File( System.getProperty("java.io.tmpdir"), "cruxcache" );
@@ -64,7 +67,7 @@ public class SchematronValidator {
     cacheDir.mkdirs();
     ensureISOSchematronXSLFilesOnDisk( cacheDir );
     if( debugLevel > 0 ) {
-      System.out.println( "Ensuring ISO Schematron files on disk took " + ( System.currentTimeMillis() - t1 ) + " ms" );
+      LOG.info( "Ensuring ISO Schematron files on disk took " + ( System.currentTimeMillis() - t1 ) + " ms" );
     }
 
     try {
@@ -72,14 +75,14 @@ public class SchematronValidator {
       //compile the passed-in Schematron rules into XSL using the ISO Schematron XSL, if necessary
       File xslFile = compileSchematronRulesToXSLIfNeeded( new File( schematronFile ) );
       if( debugLevel > 0 ) {
-        System.out.printf( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms\n" );
+        LOG.info( String.format( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms\n" ) );
       }
 
       t1 = System.currentTimeMillis();
       //run the compiled XSL rules against the XML file
       String transformResult = transform( xslFile, new File( xmlFile ) );
       if( debugLevel > 0 ) {
-        System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
+        LOG.info( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile ) );
       }
     }
     catch( SaxonApiException e ){
@@ -146,7 +149,7 @@ public class SchematronValidator {
     t.setDestination( out );
     t.transform();
     if( debugLevel > 0 ) {
-      System.out.printf( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile );
+      LOG.info( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile ) );
     }
     if( errorListener.errors.size() > 0 ){
       throw new ValidationException( VALIDATION_FAILED_PREFIX, errorListener.errors );

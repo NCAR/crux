@@ -42,7 +42,7 @@ public class XML10ValidatorTest {
   @Test
   public void testSimpleGMLInstanceValidationWithCatalog() throws Exception{
     File xmlFile = new File( "src/test/resources/simplegml.xml" );
-    XML10Validator validator = new XML10Validator( 0, "src/test/resources/gml-system-catalog.xml" );
+    XML10Validator validator = new XML10Validator( false, "src/test/resources/gml-system-catalog.xml" );
     validator.validate( xmlFile.getAbsolutePath() );
   }
 }

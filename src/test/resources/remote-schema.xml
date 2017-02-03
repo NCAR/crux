@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<remote:Element  xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:remote='http://host.org/remote' xsi:schemaLocation='http://host.org/remote http://host.org/remote/remote.xsd'>
+    <remote:note>This XML example should not resolve when remote schema access is disabled</remote:note>
+</remote:Element>

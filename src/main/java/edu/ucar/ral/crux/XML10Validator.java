@@ -26,12 +26,12 @@ public class XML10Validator {
 
   private EntityResolver2 resolver = null;
 
-  public XML10Validator(){}
+  public XML10Validator(){
+    resolver = new XMLCatalogResolver( null, true, true );
+  }
 
-  public XML10Validator( int debugLevel, String... catalogLocations ){
-    if( catalogLocations.length > 0 ) {
-      resolver = new DebugXMLCatalogResolver( debugLevel, catalogLocations, true );
-    }
+  public XML10Validator( boolean allowRemoteResources, String... catalogLocations ){
+    resolver = new XMLCatalogResolver( catalogLocations, true, allowRemoteResources );
   }
 
   /**
