@@ -190,19 +190,26 @@
         <artifactId>maven-assembly-plugin</artifactId>
         <version>2.4</version>
         <configuration>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+          <finalName>${project.artifactId}-${project.version}-all</finalName>
           <appendAssemblyId>false</appendAssemblyId>
-          <tarLongFileMode>gnu</tarLongFileMode>
           <archive>
             <manifest>
               <mainClass>edu.ucar.ral.crux.Crux</mainClass>
             </manifest>
           </archive>
-          <!-- WARNING!! Change appendAssemblyId above to true if another descriptor is added
-          or all of the output JARs will have the same name and overwrite one another  -->
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
         </configuration>
+        <executions>
+          <execution>
+            <id>make-jar-with-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <!-- Generate source JAR file - for deployment to Maven Central -->

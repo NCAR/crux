@@ -8,7 +8,10 @@ if [ -e pom.xml ]; then
   mvn clean package assembly:single -Dmaven.install.skip=true
   status=$?
   if [ $status -eq 0 ]; then
-    bin/make-executable-jar.sh target/crux-?.?.jar
+    # make crux-1.0-all.jar executable
+    if [ -e target/crux-*-all.jar ]; then
+      bin/make-executable-jar.sh target/crux-*-all.jar
+    fi
   fi
   exit $status #error code of mvn command
 else
