@@ -24,8 +24,7 @@ public class Utils {
    */
   public static boolean isLocalFile( String path ) {
     try {
-      new URL(path);
-      return false;
+      return "file".equals( new URL(path).getProtocol() );
     } catch (MalformedURLException e) {
       return true;
     }
@@ -52,7 +51,7 @@ public class Utils {
    * @param outputFile the local path to where the resource should be written
    * @throws IOException if the resource name cannot be found in the classpath
    */
-  static public void writeResourceToFile( String resourceName, File outputFile ) throws IOException {
+   public static void writeResourceToFile( String resourceName, File outputFile ) throws IOException {
     InputStream inputStream = null;
     try {
       inputStream = Utils.class.getResourceAsStream( resourceName );

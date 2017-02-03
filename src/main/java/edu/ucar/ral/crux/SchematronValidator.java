@@ -27,18 +27,12 @@ import java.util.List;
 /**
  * Validates XML files against Schematron rules.  This uses the ISO Schematron XSLT files, which are then executed by
  * Saxon.
- *
- * This class currently calls Saxon via the main() method.  While it is possible to call sub-classes of Saxon directly,
- * the Transform class which is called by the main() method is complicated and not very easy to figure out how to use
- * directly.  An improvement would be to call the Saxon classes directly rather than through main()
  */
 public class SchematronValidator {
   private static final String VALIDATION_FAILED_PREFIX = "Schematron validation failed ";
 
   private File cacheDir = new File( System.getProperty("java.io.tmpdir"), "cruxcache" );
-
   private int debugLevel = 0;
-
   private ThreadLocal<HashMap<String,XsltExecutable>> templateCacheLocal = new ThreadLocal<>();
   private ThreadLocal<Processor> processorLocal = new ThreadLocal<>();
 
@@ -47,9 +41,17 @@ public class SchematronValidator {
   }
 
   public SchematronValidator(int debugLevel){
+    this();
     this.debugLevel = debugLevel;
   }
 
+  /**
+   * Validate an XML file against a local Schematron definition
+   * @param xmlFile
+   * @param schematronFile
+   * @throws ValidationException
+   * @throws IOException
+   */
   public void validate( String xmlFile, String schematronFile ) throws ValidationException, IOException {
     long t1 = System.currentTimeMillis();
     File xmlFileObj = new File( xmlFile );
@@ -68,7 +70,7 @@ public class SchematronValidator {
     try {
       t1 = System.currentTimeMillis();
       //compile the passed-in Schematron rules into XSL using the ISO Schematron XSL, if necessary
-      File xslFile = compileSchematronRulesToXSLIfNeeded( schematronFile );
+      File xslFile = compileSchematronRulesToXSLIfNeeded( new File( schematronFile ) );
       if( debugLevel > 0 ) {
         System.out.printf( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms\n" );
       }
@@ -85,19 +87,18 @@ public class SchematronValidator {
     }
   }
 
-  private File compileSchematronRulesToXSLIfNeeded( String schematronFile ) throws ValidationException, IOException, SaxonApiException {
-    File schematronFileObj = new File( schematronFile );
-    String filename = schematronFileObj.getName();
+  private File compileSchematronRulesToXSLIfNeeded( File schematronFile ) throws ValidationException, IOException, SaxonApiException {
+    String filename = schematronFile.getName();
     String[] split = filename.split( "\\." );
     String origExt = split[split.length-1];
     //convert the absolute path of the original file to its full path under the cache directory.  This ensures that if
     //there are two differing files on disk named 'xyz.sch' that they each have their own unique compiled xsl path
-    String outputDirStr = Utils.uniquePathUnder( cacheDir, schematronFileObj );
+    String outputDirStr = Utils.uniquePathUnder( cacheDir, schematronFile );
     File outputFile = new File( outputDirStr, filename.replace( "."+origExt, ".xsl" ) );
     if( !outputFile.exists() ) {
       outputFile.getParentFile().mkdirs();
       //if compilation fails there is no graceful way to recover.  We are done
-      transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), schematronFileObj, outputFile );
+      transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), schematronFile, outputFile );
     }
     return outputFile;
   }
@@ -182,7 +183,7 @@ public class SchematronValidator {
       templateCache = new HashMap<>();
       templateCacheLocal.set( templateCache );
     }
-    XsltExecutable templates = templateCache.get(xslFile.toString());
+    XsltExecutable templates = templateCache.get( xslFile.toString() );
     if( templates == null ) {
       Processor proc = getProcessor();
       XsltCompiler comp = proc.newXsltCompiler();

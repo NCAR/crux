@@ -16,16 +16,41 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The main class for Crux, which provides command-line and direct methods for XML Schema 1.0 and Schematron
- * validation
+ * The main class for Crux, which allows for validating XML and XSD files against their XML Schema, as well as against
+ * Schematron definitions. This class can be used from the command-line or directly via methods
  */
 public class Crux {
   private SchematronValidator schematronValidator = new SchematronValidator();
 
+  /**
+   * Validate any number of XML or XSD files against their XML Schema and optionally against a local Schematron definition.  
+   * Local XML/XSD paths may include wildcards such as "*" or "?" 
+   * @param catalogFile the path to a local catalog file.  May be null
+   * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
+   * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
+   * @return the number of files which were validated
+   * @throws ValidationException
+   * @throws IOException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
   public int validate( String catalogFile, String schematronFile, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     return validate( catalogFile, schematronFile, 0, xmlOrXsdPaths );
   }
 
+  /**
+   * Validate any number of XML or XSD files against their XML Schema and optionally against a local Schematron definition.  
+   * Local XML/XSD paths may include wildcards such as "*" or "?" 
+   * @param catalogFile the path to a local catalog file.  May be null
+   * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
+   * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
+   * @param debugLevel values greater than 0 print additional debugging information                     
+   * @return the number of files which were validated
+   * @throws ValidationException
+   * @throws IOException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
   public int validate( String catalogFile, String schematronFile, int debugLevel, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     XML10Validator validator;
     if( catalogFile == null ) {
@@ -34,24 +59,23 @@ public class Crux {
       validator = new XML10Validator( debugLevel, catalogFile );
     }
 
-    List<ValidationError> errors = new ArrayList<ValidationError>();
+    List<ValidationError> errors = new ArrayList<>();
     int numFilesValidated = 0;
 
     for( String filePath : xmlOrXsdPaths ) {
-      if( filePath.contains( ".." ) ){
-        throw new IOException( "Relative paths using '..' are not currently supported" );
-      }
-      // a full relative path library is not readily available for Java - Ant DirectoryScanner doesn't seem to handle
-      // paths with intermixed "." and ".."
-      // To fix the "." issues we trim off "./" from the front, which seems to work
-      // TODO: fix ".." handling, which does not work with DirectoryScanner
-      while( filePath.startsWith( "./" ) ) {
-        filePath = filePath.substring( 2 );
-      }
       boolean isLocal = Utils.isLocalFile( filePath );
       try {
         //if we have a local file we resolve wildcards
         if( isLocal ) {
+          if( filePath.contains( ".." ) ){
+            throw new IOException( "Relative paths using '..' are not currently supported" );
+          }
+          //a full relative path library is not readily available for Java - Ant DirectoryScanner doesn't seem to handle
+          //paths with intermixed "." and "..". To fix the "." issues we trim off "./"
+          while( filePath.startsWith( "./" ) ) {
+            filePath = filePath.substring( 2 );
+          }
+
           //DirectoryScanner chokes on "//".  Collapse these into "/" for local files
           filePath=filePath.replace( "//", "/" );
           File localFile = new File( filePath );
@@ -150,7 +174,7 @@ public class Crux {
       System.exit( 1 );
     }
 
-    List<String> argsList = new ArrayList<String>( Arrays.asList( args ) );
+    List<String> argsList = new ArrayList<>( Arrays.asList( args ) );
     String catalogLocation = null;
     String schematronFile = null;
     int debugLevel = 0;
@@ -192,7 +216,8 @@ public class Crux {
     Crux crux = new Crux();
     boolean validationFailed = false;
     try{
-      int numValidatedFiles = crux.validate( catalogLocation, schematronFile, debugLevel, argsList.toArray( new String[argsList.size()] ) );
+      int numValidatedFiles = 
+        crux.validate( catalogLocation, schematronFile, debugLevel, argsList.toArray( new String[argsList.size()] ) );
     }
     catch( ValidationException e ) {
       validationFailed = true;

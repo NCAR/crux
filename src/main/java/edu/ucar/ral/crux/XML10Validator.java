@@ -35,24 +35,25 @@ public class XML10Validator {
   }
 
   /**
-   * Validate the given file (either an XSD or XML file), using the provided resolver
-   * @param xsdOrXmlFile the XML or XSD file to be validated
+   * Validate an XSD or XML file against its XML Schema
+   * @param xsdOrXmlFilePath the XML or XSD file to be validated, either a local path such as "/tmp/foo.xml" or 
+   *                         "file:///tmp/foo.xml", or a remote path such as "http://foo.org/foo.xml"
    * @throws IOException if problems are encountered reading the file
    * @throws SAXException when SAX parsing problems are encountered
    * @throws ParserConfigurationException when SAX initialization fails
    * @throws ValidationException when validation failures occur
    */
-  public void validate( String xsdOrXmlFile ) throws ParserConfigurationException, SAXException, ValidationException, IOException {
+  public void validate( String xsdOrXmlFilePath ) throws ParserConfigurationException, SAXException, ValidationException, IOException {
     SAXParserFactory factory = SAXParserFactory.newInstance();
     factory.setValidating(true);
     factory.setNamespaceAware(true);
 
-    MyErrorHandler errorHandler = new MyErrorHandler( xsdOrXmlFile );
+    MyErrorHandler errorHandler = new MyErrorHandler( xsdOrXmlFilePath );
     SAXParser parser = factory.newSAXParser();
     parser.setProperty( "http://java.sun.com/xml/jaxp/properties/schemaLanguage", "http://www.w3.org/2001/XMLSchema" );
 
     //if this is a schema document, validate it against the XML Schema 1.0 XSD
-    if( xsdOrXmlFile.endsWith( ".xsd" ) ) {
+    if( xsdOrXmlFilePath.endsWith( ".xsd" ) ) {
       parser.setProperty( "http://java.sun.com/xml/jaxp/properties/schemaSource", "http://www.w3.org/2001/XMLSchema.xsd" );
     }
 
@@ -61,7 +62,7 @@ public class XML10Validator {
       reader.setProperty( "http://apache.org/xml/properties/internal/entity-resolver", resolver );
     }
     reader.setErrorHandler( errorHandler );
-    reader.parse( new InputSource( xsdOrXmlFile ) );
+    reader.parse( new InputSource( xsdOrXmlFilePath ) );
     List<ValidationError> failures = errorHandler.getFailures();
     if( failures.size() > 0 ){
       throw new ValidationException( VALIDATION_FAILED_PREFIX, failures );
@@ -79,7 +80,7 @@ public class XML10Validator {
       return failures;
     }
 
-    private List<ValidationError> failures = new ArrayList<ValidationError>();
+    private List<ValidationError> failures = new ArrayList<>();
 
     @Override
     public void warning(SAXParseException exception) throws SAXException {
