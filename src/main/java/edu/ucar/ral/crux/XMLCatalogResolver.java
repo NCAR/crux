@@ -53,6 +53,7 @@ public class XMLCatalogResolver extends org.apache.xerces.util.XMLCatalogResolve
   /**
    * @param catalogLocations the path to XML catalog files
    * @param preferPublic whether public or system matches are preferred
+   * @param allowRemoteResources when false remote (non-local) resources are not resolved
    */
   public XMLCatalogResolver(String[] catalogLocations, boolean preferPublic, boolean allowRemoteResources) {
     this.allowRemoteResources = allowRemoteResources;

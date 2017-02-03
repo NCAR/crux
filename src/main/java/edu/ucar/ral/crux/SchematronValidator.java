@@ -50,10 +50,10 @@ public class SchematronValidator {
 
   /**
    * Validate an XML file against a local Schematron definition
-   * @param xmlFile
-   * @param schematronFile
-   * @throws ValidationException
-   * @throws IOException
+   * @param xmlFile the XML file to validate
+   * @param schematronFile the Schematron definition file against which the XML is checked
+   * @throws ValidationException if validation failures occur
+   * @throws IOException if necessary files are not found
    */
   public void validate( String xmlFile, String schematronFile ) throws ValidationException, IOException {
     long t1 = System.currentTimeMillis();

@@ -33,11 +33,12 @@ public class Crux {
    * @param catalogFile the path to a local catalog file.  May be null
    * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
    * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
+   * @param allowRemoteResources when false remote (non-local) schema files will not be resolved
    * @return the number of files which were validated
-   * @throws ValidationException
-   * @throws IOException
-   * @throws SAXException
-   * @throws ParserConfigurationException
+   * @throws ValidationException if validation failures occur
+   * @throws IOException if necessary files could not be read
+   * @throws SAXException if the XML to validate is not well-structured
+   * @throws ParserConfigurationException if a parser configuration error occurs
    */
   public int validate( String catalogFile, String schematronFile, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     return validate( catalogFile, schematronFile, 0, allowRemoteResources, xmlOrXsdPaths );
@@ -48,13 +49,14 @@ public class Crux {
    * Local XML/XSD paths may include wildcards such as "*" or "?" 
    * @param catalogFile the path to a local catalog file.  May be null
    * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
+   * @param allowRemoteResources when false remote (non-local) schema files will not be resolved
    * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
    * @param debugLevel values greater than 0 print additional debugging information                     
    * @return the number of files which were validated
-   * @throws ValidationException
-   * @throws IOException
-   * @throws SAXException
-   * @throws ParserConfigurationException
+   * @throws ValidationException if validation failures occur
+   * @throws IOException if necessary files could not be read
+   * @throws SAXException if the XML to validate is not well-structured
+   * @throws ParserConfigurationException if a parser configuration error occurs
    */
   public int validate( String catalogFile, String schematronFile, int debugLevel, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     XML10Validator validator;
@@ -246,7 +248,7 @@ public class Crux {
       }
       else {
         for( ValidationError failure : e.getValidationErrors() ) {
-          LOG.info( "Validation FAILED on " + failure );
+          LOG.error( "Validation FAILED on " + failure );
         }
       }
     }
