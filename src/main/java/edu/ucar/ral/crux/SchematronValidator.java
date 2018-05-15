@@ -98,10 +98,15 @@ public class SchematronValidator {
     //there are two differing files on disk named 'xyz.sch' that they each have their own unique compiled xsl path
     String outputDirStr = Utils.uniquePathUnder( cacheDir, schematronFile );
     File outputFile = new File( outputDirStr, filename.replace( "."+origExt, ".xsl" ) );
-    if( !outputFile.exists() ) {
+    //re/create the XSL if the file doesn't exist or the file last modified times of the SCH and XSL files do not match.
+    //For example, if the SCH has been modified and the XSL needs to be regenerated
+    if( !outputFile.exists() || schematronFile.lastModified() != outputFile.lastModified() ) {
       outputFile.getParentFile().mkdirs();
+      outputFile.delete();  //for when the file is being regenerated, this does nothing if the file does not exist
+      LOG.debug( "Creating cached XSL file: "+outputFile );
       //if compilation fails there is no graceful way to recover.  We are done
       transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), schematronFile, outputFile );
+      outputFile.setLastModified( schematronFile.lastModified() );
     }
     return outputFile;
   }
