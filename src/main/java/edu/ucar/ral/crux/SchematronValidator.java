@@ -18,13 +18,20 @@ import org.slf4j.LoggerFactory;
 import javax.xml.transform.SourceLocator;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.stream.StreamSource;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Validates XML files against Schematron rules.  This uses the ISO Schematron XSLT files, which are then executed by
@@ -34,10 +41,17 @@ public class SchematronValidator {
   private static final Logger LOG = LoggerFactory.getLogger( SchematronValidator.class );
   private static final String VALIDATION_FAILED_PREFIX = "Schematron validation failed ";
 
+  // the group in this pattern will capture the 'file.xml' inside of lines like "document('file.xml')"
+  // this is defined here so it doesn't need to be repeatedly compiled with every Schematron validation step
+  private static final Pattern DOCUMENT_PATTERN = Pattern.compile( "document\\(\\'(.+)\\'\\)" );
+
   private File cacheDir = new File( System.getProperty("java.io.tmpdir"), "cruxcache" );
   private int debugLevel = 0;
   private ThreadLocal<HashMap<String,XsltExecutable>> templateCacheLocal = new ThreadLocal<>();
   private ThreadLocal<Processor> processorLocal = new ThreadLocal<>();
+  //stores the set of dependent files for each Schematron file so we don't have to search the SCH file
+  //every time validation is performed
+  private Map<File,List<File>> schToReferencedFiles = new HashMap<>();
 
   public SchematronValidator(){
     System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
@@ -103,11 +117,13 @@ public class SchematronValidator {
     if( !outputFile.exists() || schematronFile.lastModified() != outputFile.lastModified() ) {
       outputFile.getParentFile().mkdirs();
       outputFile.delete();  //for when the file is being regenerated, this does nothing if the file does not exist
+      schToReferencedFiles.remove( schematronFile );  //if the SCH file was updated our referenced file cache should be invalidated
       LOG.debug( "Creating cached XSL file: "+outputFile );
       //if compilation fails there is no graceful way to recover.  We are done
       transform( new File( cacheDir, "iso_schematron_message_xslt2.xsl" ), schematronFile, outputFile );
       outputFile.setLastModified( schematronFile.lastModified() );
     }
+    cacheReferencedDocumentsIfNecessary( schematronFile );
     return outputFile;
   }
 
@@ -179,6 +195,72 @@ public class SchematronValidator {
         }
       }
     }
+  }
+
+  /**
+   * Cache any other documents referenced in a Schematron that are required.  This includes Schematron definitions like
+   * document('file.xml') which effectively specify a strict dependency for a particular Schematron file to work correctly
+   *
+   * @param schematronFile
+   */
+  private void cacheReferencedDocumentsIfNecessary( File schematronFile ) throws IOException {
+    long start = System.currentTimeMillis();
+    //This map is used to reduce searching through the SCH file to a one-time process.  The performance improvement is
+    //minor and mainly useful for high-volume validators that are processing many files per second
+    List<File> referencedDocuments = schToReferencedFiles.get( schematronFile );
+    if( referencedDocuments == null ) {
+      referencedDocuments = new ArrayList<>();
+      schToReferencedFiles.put( schematronFile, referencedDocuments );
+      try( BufferedReader br = new BufferedReader( new FileReader( schematronFile ) ) ) {
+        String line;
+        while( ( line = br.readLine() ) != null ) {
+          //if this line includes an external document definition of the form:   document('file.xml')
+          Matcher documentMatcher = DOCUMENT_PATTERN.matcher( line );
+          if( documentMatcher.find() ) {
+            // group 0 is the entire 'document()' portion, group 1 is the file path inside of the document() portion
+            String documentPath = documentMatcher.group( 1 );
+            File documentFile = new File( documentPath );
+
+            //translate relative paths into an absolute file path relative to the Schematron file
+            if( ! documentFile.isAbsolute() ) {
+              documentFile = new File( schematronFile.getParentFile(), documentPath );
+            }
+            referencedDocuments.add( documentFile );
+          }
+        }
+      }
+    }
+    for( File f : referencedDocuments ){
+      //note that if this file is referenced by the Schematron but does not exist a FileNotFound will be thrown here -
+      //this ends this method and likely fails validation.  This is probably the desirable behavior as it fails early
+      //but may need to be revisited
+      cacheIfNecessary( f );
+    }
+    LOG.debug( "Took " + ( System.currentTimeMillis() - start ) + " ms to cache " + referencedDocuments.size() + " referenced docs" );
+  }
+
+  /**
+   * Cache a file by placing it into the cache dir if it does not already exist AND if the last modified times do not match.
+   * A file that has a different last modified time than its cached version will be replaced
+   * @param file
+   * @return true of the file was cached, false otherwise
+   * @throws IOException
+   */
+  private boolean cacheIfNecessary( File file ) throws IOException{
+    //convert the absolute path of the original file to its full path under the cache directory.  This ensures that if
+    //there are two differing files on disk named 'xyz.sch' that they each have their own unique cache file path
+    String outputDirStr = Utils.uniquePathUnder( cacheDir, file );
+    File outputFile = new File( outputDirStr, file.getName() );
+    //re/create the cached file if the file doesn't already exist or the file last modified times do not match.
+    //If the source file has been modified the cached file needs to be regenerated
+    if( !outputFile.exists() || file.lastModified() != outputFile.lastModified() ) {
+      outputFile.getParentFile().mkdirs();
+      LOG.debug( "Creating cached file: "+outputFile );
+      Files.copy( file.toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING );
+      outputFile.setLastModified( file.lastModified() );
+      return true;
+    }
+    return false;
   }
 
   /**
