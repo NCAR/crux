@@ -1,0 +1,5 @@
+<!ELEMENT contacts (contact*)>
+  <!ELEMENT contact (firstname,lastname)>
+  <!ELEMENT firstname (#PCDATA)>
+  <!ELEMENT lastname ANY>
+  <!ENTITY xxe SYSTEM "README.txt">

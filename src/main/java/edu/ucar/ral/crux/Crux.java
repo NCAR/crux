@@ -26,6 +26,7 @@ public class Crux {
   private static final Logger LOG = LoggerFactory.getLogger( Crux.class ); 
   
   private SchematronValidator schematronValidator = new SchematronValidator();
+  private boolean allowingRemoteResources = false;
 
   /**
    * Validate any number of XML or XSD files against their XML Schema and optionally against a local Schematron definition.  
@@ -33,42 +34,24 @@ public class Crux {
    * @param catalogFile the path to a local catalog file.  May be null
    * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
    * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
-   * @param allowRemoteResources when false remote (non-local) schema files will not be resolved
    * @return the number of files which were validated
    * @throws ValidationException if validation failures occur
    * @throws IOException if necessary files could not be read
    * @throws SAXException if the XML to validate is not well-structured
    * @throws ParserConfigurationException if a parser configuration error occurs
    */
-  public int validate( String catalogFile, String schematronFile, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
-    return validate( catalogFile, schematronFile, 0, allowRemoteResources, xmlOrXsdPaths );
-  }
-
-  /**
-   * Validate any number of XML or XSD files against their XML Schema and optionally against a local Schematron definition.  
-   * Local XML/XSD paths may include wildcards such as "*" or "?" 
-   * @param catalogFile the path to a local catalog file.  May be null
-   * @param schematronFile the path to a local Schematron (.sch) definition.  May be null
-   * @param allowRemoteResources when false remote (non-local) schema files will not be resolved
-   * @param xmlOrXsdPaths a set of file paths to XML or XSD files.  These may be local file paths or remote http: paths
-   * @param debugLevel values greater than 0 print additional debugging information                     
-   * @return the number of files which were validated
-   * @throws ValidationException if validation failures occur
-   * @throws IOException if necessary files could not be read
-   * @throws SAXException if the XML to validate is not well-structured
-   * @throws ParserConfigurationException if a parser configuration error occurs
-   */
-  public int validate( String catalogFile, String schematronFile, int debugLevel, boolean allowRemoteResources, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
+  public int validate( String catalogFile, String schematronFile, String... xmlOrXsdPaths ) throws ValidationException, IOException, SAXException, ParserConfigurationException {
     XML10Validator validator;
     if( catalogFile == null ) {
-      validator = new XML10Validator( allowRemoteResources );
+      validator = new XML10Validator();
     } else {
-      validator = new XML10Validator( allowRemoteResources, catalogFile );
+      validator = new XML10Validator( catalogFile );
     }
 
-    if( !allowRemoteResources ) {
+    if( !isAllowingRemoteResources() ) {
       LOG.info( "Offline mode enabled, schema resolution will only use local files" );
     }
+    validator.setAllowingRemoteResources( isAllowingRemoteResources() );
 
     List<ValidationError> errors = new ArrayList<>();
     int numFilesValidated = 0;
@@ -110,7 +93,7 @@ public class Crux {
             numFilesValidated++;
             long startMs = System.currentTimeMillis();
 
-            printValidatingXMLSchema( file, catalogFile );
+            LOG.info( getValidatingXMLSchemaLogMessage( file, catalogFile ) );
             validator.validate( file );
             if( schematronFile != null ) {
               LOG.info( String.format( "Validating file %s against Schematron rules (%s)", file, schematronFile ) );
@@ -125,7 +108,7 @@ public class Crux {
           numFilesValidated++;
           long startMs = System.currentTimeMillis();
 
-          printValidatingXMLSchema( filePath, catalogFile );
+          LOG.info( getValidatingXMLSchemaLogMessage( filePath, catalogFile ) );
           validator.validate( filePath );
           if( schematronFile != null ) {
             LOG.info( String.format( "Validating file %s against Schematron rules (%s)\n", filePath, schematronFile ) );
@@ -150,39 +133,55 @@ public class Crux {
     return numFilesValidated;
   }
 
-  private static void printValidatingXMLSchema( String xsdOrXmlFile, String catalogFile ){
+  private String getValidatingXMLSchemaLogMessage( String xsdOrXmlFile, String catalogFile ){
     String msg = "Validating file "+xsdOrXmlFile+" against XML schema";
     if( catalogFile != null ){
       msg += " using the following catalog(s): "+ catalogFile;
     }
-    LOG.info( msg );
+    return msg;
+  }
+
+  /**
+   * Set whether remote (non-local) schema files are resolved.  Remote schema resolution can be used to get validation
+   * software to participate in denial of service attacks and other malicious activities. False by default
+   */
+  public void setAllowingRemoteResources( boolean allowingRemoteResources ){
+    this.allowingRemoteResources = allowingRemoteResources;
+  }
+
+  public boolean isAllowingRemoteResources() {
+    return allowingRemoteResources;
+  }
+
+  private static void printUsage(){
+    String simpleCatalog = "  <!DOCTYPE catalog PUBLIC \"-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN\" \"http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd\">\n" +
+      "  <catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n" +
+      "    <system systemId=\"http://www.w3.org/1999/xlink.xsd\" uri=\"local-schemas/xlink.xsd\"/>\n" +
+      "    <rewriteSystem systemIdStartString=\"http://schemas.opengis.net\" rewritePrefix=\"local-schemas/net/opengis\"/>\n" +
+      "  </catalog>";
+
+    System.err.println( "Usage: crux.jar [OPTIONS] [XML/XSD FILES]\t (XML/XSD files may include wildcards)\n");
+    System.err.println( "Options:" );
+    System.err.println( "\t -c CATALOG_FILE" );
+    System.err.println( "\t -s SCHEMATRON_FILE" );
+    System.err.println( "\t -r   (allow remote schema resolution - disabled by default)" );
+    System.err.println( "\t -d   (enable debugging messages)\n" );
+    System.err.println( "A simple catalog file which would utilize a local copy of http://www.w3.org/1999/xlink.xsd would be:\n\n"+simpleCatalog);
+    System.err.println();
+    System.err.println( "Examples:\n");
+    System.err.println( "  [crux.jar] file.xml                     -validation of a local XML file based on schema locations in the file" );
+    System.err.println( "  [crux.jar] *.xml                        -validation of *.xml local XML files based on schema locations in the files" );
+    System.err.println( "  [crux.jar] file?.xml                    -validation of local XML files like file1.xml, fileA.xml, and so on based on schema locations in the files" );
+    System.err.println( "  [crux.jar] http://foo.org/myschema.xsd  -validation of a remote schema" );
+    System.err.println( "  [crux.jar] file.xml -c catalog.xml      -validation of a local XML file using local copies of schemas as defined in catalog.xml" );
+    System.err.println( "  [crux.jar] file.xml -s rules.sch        -validation of a local XML file against both the internally-defined XML schema and against Schematron rules" );
+    System.err.println( "  [crux.jar] myschema.xsd                 -validation of a local schema" );
+    System.err.println();
   }
 
   public static void main(String[] args){
     if( args.length < 1 ){
-      String simpleCatalog = "  <!DOCTYPE catalog PUBLIC \"-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN\" \"http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd\">\n" +
-        "  <catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n" +
-        "    <system systemId=\"http://www.w3.org/1999/xlink.xsd\" uri=\"local-schemas/xlink.xsd\"/>\n" +
-        "    <rewriteSystem systemIdStartString=\"http://schemas.opengis.net\" rewritePrefix=\"local-schemas/net/opengis\"/>\n" +
-        "  </catalog>";
-
-      System.err.println( "Usage: crux.jar [OPTION] [XML/XSD FILES]\t (XML/XSD files may include wildcards)\n");
-      System.err.println( "Options:" );
-      System.err.println( "\t -c CATALOG_FILE" );
-      System.err.println( "\t -s SCHEMATRON_FILE" );
-      System.err.println( "\t -o (offline use, remote schemas will not resolve)" );
-      System.err.println( "\t -d  (enable debugging)\n" );
-      System.err.println( "A simple catalog file which would utilize a local copy of http://www.w3.org/1999/xlink.xsd would be:\n\n"+simpleCatalog);
-      System.err.println();
-      System.err.println( "Examples:\n");
-      System.err.println( "  [crux.jar] file.xml                     -validation of a local XML file based on schema locations in the file" );
-      System.err.println( "  [crux.jar] *.xml                        -validation of *.xml local XML files based on schema locations in the files" );
-      System.err.println( "  [crux.jar] file?.xml                    -validation of local XML files like file1.xml, fileA.xml, and so on based on schema locations in the files" );
-      System.err.println( "  [crux.jar] http://foo.org/myschema.xsd  -validation of a remote schema" );
-      System.err.println( "  [crux.jar] file.xml -c catalog.xml      -validation of a local XML file using local copies of schemas as defined in catalog.xml" );
-      System.err.println( "  [crux.jar] file.xml -s rules.sch        -validation of a local XML file against both the internally-defined XML schema and against Schematron rules" );
-      System.err.println( "  [crux.jar] myschema.xsd                 -validation of a local schema" );
-      System.err.println();
+      printUsage();
       System.exit( 1 );
     }
 
@@ -190,7 +189,7 @@ public class Crux {
     String catalogLocation = null;
     String schematronFile = null;
     int debugLevel = 0;
-    boolean allowRemoteResources = true;
+    boolean allowRemoteResources = false;
     for( int i = 0; i < argsList.size(); i++ ){
       String arg = argsList.get( i );
       if( arg.equals( "-c" ) ){
@@ -227,23 +226,24 @@ public class Crux {
         argsList.remove( i );
         i--;
       }
-      else if( arg.equals( "-o" ) ){
-        allowRemoteResources = false;
+      else if( arg.equals( "-r" ) ){
+        allowRemoteResources = true;
         argsList.remove( i );
         i--;
       }
     }
 
     Crux crux = new Crux();
+    crux.setAllowingRemoteResources( allowRemoteResources );
     boolean validationFailed = false;
     try{
       int numValidatedFiles = 
-        crux.validate( catalogLocation, schematronFile, debugLevel, allowRemoteResources, argsList.toArray( new String[argsList.size()] ) );
+        crux.validate( catalogLocation, schematronFile, argsList.toArray( new String[argsList.size()] ) );
     }
     catch( ValidationException e ) {
       validationFailed = true;
       if( e.getCause() != null ){
-        //the validation failed due to an I/O or other exception.  Print this
+        //the validation failed due to an I/O or other nested exception.  Print this
         e.getCause().printStackTrace();
       }
       else {

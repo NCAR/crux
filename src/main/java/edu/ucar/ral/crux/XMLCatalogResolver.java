@@ -38,8 +38,8 @@ import java.io.IOException;
 public class XMLCatalogResolver extends org.apache.xerces.util.XMLCatalogResolver{
   private static final Logger LOG = LoggerFactory.getLogger( XMLCatalogResolver.class );
 
-  //whether remote content should be resolved.  When false remote resources (i.e., schemas) are not loaded 
-  private boolean allowRemoteResources = true;
+  //whether remote content should be resolved.  When false, remote resources (i.e., schemas) are not loaded
+  private boolean allowingRemoteResources = false;
 
   public XMLCatalogResolver() {super();}
 
@@ -53,10 +53,8 @@ public class XMLCatalogResolver extends org.apache.xerces.util.XMLCatalogResolve
   /**
    * @param catalogLocations the path to XML catalog files
    * @param preferPublic whether public or system matches are preferred
-   * @param allowRemoteResources when false remote (non-local) resources are not resolved
    */
-  public XMLCatalogResolver(String[] catalogLocations, boolean preferPublic, boolean allowRemoteResources) {
-    this.allowRemoteResources = allowRemoteResources;
+  public XMLCatalogResolver(String[] catalogLocations, boolean preferPublic) {
     setCatalogList(catalogLocations);
     setPreferPublic(preferPublic);
   }
@@ -102,13 +100,13 @@ public class XMLCatalogResolver extends org.apache.xerces.util.XMLCatalogResolve
     if( expandedSystemId == null ) {
       throw new IOException( String.format( "Identifier %s is not resolved, check if xsi:schemaLocation and xmlns:xsi attributes are correctly defined.", desc.getNamespace() ) );
     }
-    
+
     if( !expandedSystemId.startsWith("file:") ) {
-      if( !allowRemoteResources ) {
+      if( ! allowingRemoteResources ) {
         LOG.warn( "Remote resources are disabled and identifier {} does not resolve to local path (resolved to {})", desc.getTargetNamespace(), expandedSystemId );
         throw new IOException(
           String.format("Identifier %s is not resolved to local path (resolved to %s). Only resources identified by the local catalog are enabled.",
-            desc.getNamespace(), 
+            desc.getNamespace(),
             expandedSystemId )
         );
       }
@@ -118,5 +116,13 @@ public class XMLCatalogResolver extends org.apache.xerces.util.XMLCatalogResolve
       LOG.debug( "Resolved identifier: namespace: {} publicId={] systemId={} to {}", xmlResourceIdentifier.getNamespace(), desc.getPublicId(), desc.getLiteralSystemId(), expandedSystemId );
     }
     return id;
+  }
+
+  public boolean isAllowingRemoteResources() {
+    return allowingRemoteResources;
+  }
+
+  public void setAllowingRemoteResources( boolean allowingRemoteResources ) {
+    this.allowingRemoteResources = allowingRemoteResources;
   }
 }

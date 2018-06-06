@@ -9,8 +9,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
-import org.xml.sax.ext.EntityResolver2;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -24,14 +24,19 @@ import java.util.List;
 public class XML10Validator {
   private static final String VALIDATION_FAILED_PREFIX = "Validation failed ";
 
-  private EntityResolver2 resolver = null;
+  private XMLCatalogResolver resolver;
+  private boolean allowingRemoteResources = false;
 
   public XML10Validator(){
-    resolver = new XMLCatalogResolver( null, true, true );
+    resolver = new XMLCatalogResolver( null, true );
   }
 
-  public XML10Validator( boolean allowRemoteResources, String... catalogLocations ){
-    resolver = new XMLCatalogResolver( catalogLocations, true, allowRemoteResources );
+  /**
+   * Construct a XML10Validator with a set of catalog file locations
+   * @param catalogLocations the locations of catalog files to use during validation.  May be null
+   */
+  public XML10Validator( String... catalogLocations ){
+    resolver = new XMLCatalogResolver( catalogLocations, true );
   }
 
   /**
@@ -45,8 +50,18 @@ public class XML10Validator {
    */
   public void validate( String xsdOrXmlFilePath ) throws ParserConfigurationException, SAXException, ValidationException, IOException {
     SAXParserFactory factory = SAXParserFactory.newInstance();
-    factory.setValidating(true);
-    factory.setNamespaceAware(true);
+    factory.setValidating( true );
+    factory.setNamespaceAware( true );
+
+    /////// SECURITY-RELATED RESTRICTIONS ///////
+    //taken from OWASP guidelines (https://www.owasp.org/index.php/XML_External_Entity_(XXE)_Prevention_Cheat_Sheet#Java)
+    //disable DTDs/doctypes - Xerces 2 only - http://xerces.apache.org/xerces-j/features.html#external-general-entities
+    //DTDs enable a number of security attacks in XML messages such as the billion laughs exploit
+    factory.setFeature( "http://xml.org/sax/features/external-general-entities", false );
+    factory.setFeature( "http://apache.org/xml/features/nonvalidating/load-external-dtd", false );
+    factory.setFeature( "http://apache.org/xml/features/disallow-doctype-decl", true );
+    factory.setXIncludeAware( false );
+    factory.setFeature( XMLConstants.FEATURE_SECURE_PROCESSING, true );
 
     MyErrorHandler errorHandler = new MyErrorHandler( xsdOrXmlFilePath );
     SAXParser parser = factory.newSAXParser();
@@ -58,15 +73,29 @@ public class XML10Validator {
     }
 
     XMLReader reader = parser.getXMLReader();
-    if( resolver != null ) {
-      reader.setProperty( "http://apache.org/xml/properties/internal/entity-resolver", resolver );
-    }
+    /////// SECURITY-RELATED RESTRICTIONS ///////
+    reader.setFeature( "http://xml.org/sax/features/external-general-entities", false );
+
+    resolver.setAllowingRemoteResources( isAllowingRemoteResources() );
+    reader.setProperty( "http://apache.org/xml/properties/internal/entity-resolver", resolver );
     reader.setErrorHandler( errorHandler );
     reader.parse( new InputSource( xsdOrXmlFilePath ) );
     List<ValidationError> failures = errorHandler.getFailures();
     if( failures.size() > 0 ){
       throw new ValidationException( VALIDATION_FAILED_PREFIX, failures );
     }
+  }
+
+  public boolean isAllowingRemoteResources() {
+    return allowingRemoteResources;
+  }
+
+  /**
+   * Set whether remote (non-local) schema files are resolved.  Remote schema resolution can be used to get validation
+   * software to participate in denial of service attacks and other malicious activities. False by default
+   */
+  public void setAllowingRemoteResources( boolean allowingRemoteResources ) {
+    this.allowingRemoteResources = allowingRemoteResources;
   }
 
   /**
