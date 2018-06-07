@@ -46,7 +46,6 @@ public class SchematronValidator {
   private static final Pattern DOCUMENT_PATTERN = Pattern.compile( "document\\(\\'(.+)\\'\\)" );
 
   private File cacheDir = new File( System.getProperty("java.io.tmpdir"), "cruxcache" );
-  private int debugLevel = 0;
   private ThreadLocal<HashMap<String,XsltExecutable>> templateCacheLocal = new ThreadLocal<>();
   private ThreadLocal<Processor> processorLocal = new ThreadLocal<>();
   //stores the set of dependent files for each Schematron file so we don't have to search the SCH file
@@ -55,11 +54,6 @@ public class SchematronValidator {
 
   public SchematronValidator(){
     System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
-  }
-
-  public SchematronValidator(int debugLevel){
-    this();
-    this.debugLevel = debugLevel;
   }
 
   /**
@@ -80,24 +74,18 @@ public class SchematronValidator {
     }
     cacheDir.mkdirs();
     ensureISOSchematronXSLFilesOnDisk( cacheDir );
-    if( debugLevel > 0 ) {
-      LOG.info( "Ensuring ISO Schematron files on disk took " + ( System.currentTimeMillis() - t1 ) + " ms" );
-    }
+    LOG.debug( "Ensuring ISO Schematron files on disk took " + ( System.currentTimeMillis() - t1 ) + " ms" );
 
     try {
       t1 = System.currentTimeMillis();
       //compile the passed-in Schematron rules into XSL using the ISO Schematron XSL, if necessary
       File xslFile = compileSchematronRulesToXSLIfNeeded( new File( schematronFile ) );
-      if( debugLevel > 0 ) {
-        LOG.info( String.format( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms\n" ) );
-      }
+      LOG.debug( String.format( "Compiling Schematron rules to XSL took " + ( System.currentTimeMillis() - t1 ) + " ms" ) );
 
       t1 = System.currentTimeMillis();
       //run the compiled XSL rules against the XML file
       String transformResult = transform( xslFile, new File( xmlFile ) );
-      if( debugLevel > 0 ) {
-        LOG.info( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile ) );
-      }
+      LOG.debug( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms", xmlFile, xslFile ) );
     }
     catch( SaxonApiException e ){
       throw new IOException( e );
@@ -169,9 +157,7 @@ public class SchematronValidator {
     out.setOutputFile( outputFile );
     t.setDestination( out );
     t.transform();
-    if( debugLevel > 0 ) {
-      LOG.info( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile ) );
-    }
+    LOG.debug( String.format( "Transforming %s using %s took " + ( System.currentTimeMillis() - t1 ) + " ms\n", xmlFile, xslFile ) );
     if( errorListener.errors.size() > 0 ){
       throw new ValidationException( VALIDATION_FAILED_PREFIX, errorListener.errors );
     }
@@ -236,7 +222,9 @@ public class SchematronValidator {
       //but may need to be revisited
       cacheIfNecessary( f );
     }
-    LOG.debug( "Took " + ( System.currentTimeMillis() - start ) + " ms to cache " + referencedDocuments.size() + " referenced docs" );
+    if( referencedDocuments.size() > 0 ) {
+      LOG.debug( "Caching " + referencedDocuments.size() + " referenced Schematron docs took " + ( System.currentTimeMillis() - start ) + " ms" );
+    }
   }
 
   /**

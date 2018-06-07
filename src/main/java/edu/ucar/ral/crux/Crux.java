@@ -188,48 +188,55 @@ public class Crux {
     List<String> argsList = new ArrayList<>( Arrays.asList( args ) );
     String catalogLocation = null;
     String schematronFile = null;
-    int debugLevel = 0;
     boolean allowRemoteResources = false;
     for( int i = 0; i < argsList.size(); i++ ){
       String arg = argsList.get( i );
-      if( arg.equals( "-c" ) ){
-        //if there is a next argument...
-        if( argsList.size() > (i+1) ) {
-          catalogLocation = argsList.get( i + 1 );
-          argsList.remove( i );  //remove the -c from the list
-          argsList.remove( i );  //remove the -c target from the list (this is now the ith index)
-          i--;  //after we remove items the index should remain the same
-        }
-        else{
-          System.err.println("No catalog file specified with the -c option" );
-          System.exit( 1 );
-        }
-      }
-      else if( arg.equals( "-s" ) ){
-        //if there is a next argument...
-        if( argsList.size() > (i+1) ) {
-          schematronFile = argsList.get( i + 1 );
-          argsList.remove( i );  //remove the -s from the list
-          argsList.remove( i );  //remove the -s target from the list (this is now the ith index)
-          i--;  //after we remove items the index should remain the same
-        }
-        else{
-          System.err.println("No Schematron file specified with the -s option" );
-          System.exit( 1 );
-        }
-      }
-      else if( arg.equals( "-d" ) ){
-        debugLevel = 1;
-        ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)
-          LoggerFactory.getLogger("edu.ucar.ral.crux");
-        rootLogger.setLevel( Level.DEBUG );
-        argsList.remove( i );
-        i--;
-      }
-      else if( arg.equals( "-r" ) ){
-        allowRemoteResources = true;
-        argsList.remove( i );
-        i--;
+      switch( arg ) {
+        case "-c":
+          //if there is a next argument...
+          if( argsList.size() > ( i + 1 ) ) {
+            catalogLocation = argsList.get( i + 1 );
+            argsList.remove( i );  //remove the -c from the list
+            argsList.remove( i );  //remove the -c target from the list (this is now the ith index)
+            i--;  //after we remove items the index should remain the same
+          }
+          else {
+            System.err.println( "No catalog file specified with the -c option" );
+            System.exit( 1 );
+          }
+          break;
+        case "-s":
+          //if there is a next argument...
+          if( argsList.size() > ( i + 1 ) ) {
+            schematronFile = argsList.get( i + 1 );
+            argsList.remove( i );  //remove the -s from the list
+            argsList.remove( i );  //remove the -s target from the list (this is now the ith index)
+            i--;  //after we remove items the index should remain the same
+          }
+          else {
+            System.err.println( "No Schematron file specified with the -s option" );
+            System.exit( 1 );
+          }
+          break;
+        case "-d":
+          ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)
+            LoggerFactory.getLogger( "edu.ucar.ral.crux" );
+          rootLogger.setLevel( Level.DEBUG );
+          argsList.remove( i );
+          i--;
+          break;
+        case "-r":
+          allowRemoteResources = true;
+          argsList.remove( i );
+          i--;
+          break;
+        default:
+          if( arg.startsWith( "-" )) {
+            LOG.warn( "Unknown command line argument: "+arg );
+            printUsage();
+            System.exit( 1 );
+          }
+          //other remaining arguments not prefixed with "-" are XML or XSD files to validate
       }
     }
 
