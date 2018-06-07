@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=* -->
-<!-- (c) Copyright 2015 University Corporation for -->
-<!-- Atmospheric Research (UCAR).  All Rights Reserved. -->
-<!-- *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=* -->
-
 <xs:schema xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" targetNamespace="http://www.isotc211.org/2005/gco" elementFormDefault="qualified" attributeFormDefault="unqualified" version="2012-07-13">
 	<!-- ================================= Annotation ================================ -->
 	<xs:annotation>
