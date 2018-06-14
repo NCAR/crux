@@ -40,8 +40,9 @@ public class Utils {
    * @throws java.io.IOException when a canonical path query encounters issues
    */
   public static String uniquePathUnder( File baseDir, File file ) throws IOException {
+    File parentFile = file.getCanonicalFile().getParentFile();
     //Remove colons from the file path which would cause problems on Windows, such as in C:/Users/foo
-    return baseDir.getCanonicalPath() + File.separator + file.getParentFile().getCanonicalPath().replace( ":", "" );
+    return baseDir.getCanonicalPath() + File.separator + parentFile.toString().replace( ":", "" );
   }
 
   /**
